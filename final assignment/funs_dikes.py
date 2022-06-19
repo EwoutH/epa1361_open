@@ -5,6 +5,7 @@ Created on Thu Jul 06 14:51:04 2017
 @author: ciullo
 """
 import numpy as np
+from scipy.interpolate import interp1d
 
 
 def dikefailure(sb, inflow, hriver, hbas, hground, status_t1,
@@ -58,7 +59,7 @@ def dikefailure(sb, inflow, hriver, hbas, hground, status_t1,
     return outflow, breachflow, status_t2, tbr
 
 
-def Lookuplin(MyFile, inputcol, searchcol, inputvalue):
+def LookuplinNumPy(MyFile, inputcol, searchcol, inputvalue):
     ''' Linear lookup function '''
 
     minTableValue = np.min(MyFile[:, inputcol])
@@ -77,6 +78,36 @@ def Lookuplin(MyFile, inputcol, searchcol, inputvalue):
     outpuvalue = C - ((D - C) * ((inputvalue - A) / (A - B))) * 1.0
 
     return outpuvalue
+
+
+def LookuplinCurrent(MyFile, inputcol, searchcol, inputvalue):
+    ''' Linear lookup function '''
+
+    col_values = MyFile[:, inputcol]
+    search_values = MyFile[:, searchcol]
+    minTableValue = np.min(col_values)
+    maxTableValue = np.max(col_values)
+
+    inputvalue2 = inputvalue
+
+    if inputvalue >= maxTableValue:
+        inputvalue = maxTableValue - 0.0001
+    elif inputvalue < minTableValue:
+        inputvalue = minTableValue + 0.0001
+
+    A = np.max(MyFile[col_values <= inputvalue, inputcol])
+    B = np.min(MyFile[col_values > inputvalue, inputcol])
+    C = np.max(MyFile[col_values == A, searchcol])
+    D = np.min(MyFile[col_values == B, searchcol])
+
+    return C - ((D - C) * ((inputvalue - A) / (A - B))) * 1.0
+
+
+def Lookuplin(MyFile, inputcol, searchcol, inputvalue):
+    ''' Linear lookup function '''
+    bounds = (MyFile[:, searchcol].min(), MyFile[:, searchcol].max())
+    lookup_function = interp1d(MyFile[:, inputcol], MyFile[:, searchcol], kind='linear', fill_value=bounds, bounds_error=False)
+    return lookup_function(inputvalue)
 
 
 def init_node(value, time):
